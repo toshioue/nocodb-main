@@ -100,8 +100,6 @@ import { CommandPaletteService } from '~/services/command-palette.service';
 import { CommandPaletteController } from '~/controllers/command-palette.controller';
 import { ExtensionsService } from '~/services/extensions.service';
 import { ExtensionsController } from '~/controllers/extensions.controller';
-import { JobsMetaService } from '~/services/jobs-meta.service';
-import { JobsMetaController } from '~/controllers/jobs-meta.controller';
 
 /* Datas */
 import { DataTableController } from '~/controllers/data-table.controller';
@@ -180,7 +178,6 @@ export const nocoModuleMetadata = {
           NotificationsController,
           CommandPaletteController,
           ExtensionsController,
-          JobsMetaController,
 
           /* Datas */
           DataTableController,
@@ -249,7 +246,6 @@ export const nocoModuleMetadata = {
     NotificationsService,
     CommandPaletteService,
     ExtensionsService,
-    JobsMetaService,
 
     /* Datas */
     DataTableService,

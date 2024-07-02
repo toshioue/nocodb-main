@@ -99,7 +99,6 @@ const permissionScopes = {
     'commentUpdate',
     'hideAllColumns',
     'showAllColumns',
-    'auditListRow',
     'auditRowUpdate',
     'dataUpdate',
     'dataDelete',
@@ -143,9 +142,6 @@ const permissionScopes = {
     'extensionCreate',
     'extensionUpdate',
     'extensionDelete',
-
-    // Jobs
-    'jobList',
   ],
 };
 
@@ -211,15 +207,12 @@ const rolePermissions:
 
       extensionList: true,
       extensionRead: true,
-
-      jobList: true,
-      commentList: true,
-      commentsCount: true,
-      auditListRow: true,
     },
   },
   [ProjectRoles.COMMENTER]: {
     include: {
+      commentList: true,
+      commentsCount: true,
       commentRow: true,
       commentUpdate: true,
       commentDelete: true,

@@ -58,7 +58,8 @@ export class AppHooksService {
       | AppEvents.COMMENT_UPDATE
       | AppEvents.COMMENT_DELETE,
     listener: (data: RowCommentEvent) => void,
-  ): () => void;
+  );
+
   on(
     event: AppEvents.PROJECT_INVITE,
     listener: (data: ProjectInviteEvent) => void,

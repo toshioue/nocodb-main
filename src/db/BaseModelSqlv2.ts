@@ -176,17 +176,6 @@ export function replaceDynamicFieldWithValue(
   return replaceWithValue;
 }
 
-function transformObject(value, idToAliasMap) {
-  const result = {};
-  Object.entries(value).forEach(([k, v]) => {
-    const btAlias = idToAliasMap[k];
-    if (btAlias) {
-      result[btAlias] = v;
-    }
-  });
-  return result;
-}
-
 /**
  * Base class for models
  *
@@ -4348,7 +4337,6 @@ class BaseModelSqlv2 {
               },
               {
                 limitOverride: tempToRead.length,
-                ignoreViewFilterAndSort: true,
               },
             );
 
@@ -4577,7 +4565,6 @@ class BaseModelSqlv2 {
             },
             {
               limitOverride: tempToRead.length,
-              ignoreViewFilterAndSort: true,
             },
           );
 
@@ -5965,7 +5952,7 @@ class BaseModelSqlv2 {
 
     const idToAliasMap: Record<string, string> = {};
     const idToAliasPromiseMap: Record<string, Promise<string>> = {};
-    const ltarMap: Record<string, boolean> = {};
+    const btMap: Record<string, boolean> = {};
 
     modelColumns.forEach((col) => {
       if (aliasColumns && col.id in aliasColumns) {
@@ -5975,69 +5962,61 @@ class BaseModelSqlv2 {
       }
 
       idToAliasMap[col.id] = col.title;
-      if (col.uidt === UITypes.LinkToAnotherRecord) {
-        ltarMap[col.id] = true;
-        const linkData = Object.values(data).find(
+      if (
+        [RelationTypes.BELONGS_TO, RelationTypes.ONE_TO_ONE].includes(
+          col.colOptions?.type,
+        )
+      ) {
+        btMap[col.id] = true;
+        const btData = Object.values(data).find(
           (d) => d[col.id] && Object.keys(d[col.id]),
         );
-        if (linkData) {
-          if (typeof linkData[col.id] === 'object') {
-            for (const k of Object.keys(
-              Array.isArray(linkData[col.id])
-                ? linkData[col.id][0] || {}
-                : linkData[col.id],
-            )) {
-              const linkAlias = idToAliasMap[k];
-              if (!linkAlias) {
+        if (btData) {
+          if (typeof btData[col.id] === 'object') {
+            for (const k of Object.keys(btData[col.id])) {
+              const btAlias = idToAliasMap[k];
+              if (!btAlias) {
                 idToAliasPromiseMap[k] = Column.get(this.context, {
                   colId: k,
-                })
-                  .then((col) => {
-                    return col.title;
-                  })
-                  .catch((e) => {
-                    return Promise.resolve(e);
-                  });
+                }).then((col) => {
+                  return col.title;
+                });
               }
             }
           } else {
             // Has Many BT
-            const linkAlias = idToAliasMap[col.id];
-            if (!linkAlias) {
+            const btAlias = idToAliasMap[col.id];
+            if (!btAlias) {
               idToAliasPromiseMap[col.id] = Column.get(this.context, {
                 colId: col.id,
-              })
-                .then((col) => {
-                  return col.title;
-                })
-                .catch((e) => {
-                  return Promise.resolve(e);
-                });
+              }).then((col) => {
+                return col.title;
+              });
             }
           }
         }
       } else {
-        ltarMap[col.id] = false;
+        btMap[col.id] = false;
       }
     });
 
     for (const k of Object.keys(idToAliasPromiseMap)) {
       idToAliasMap[k] = await idToAliasPromiseMap[k];
-      if ((idToAliasMap[k] as unknown) instanceof Error) {
-        throw idToAliasMap[k];
-      }
     }
 
     data.forEach((item) => {
       Object.entries(item).forEach(([key, value]) => {
         const alias = idToAliasMap[key];
         if (alias) {
-          if (ltarMap[key]) {
+          if (btMap[key]) {
             if (value && typeof value === 'object') {
-              const tempObj = Array.isArray(value)
-                ? value.map((arrVal) => transformObject(arrVal, idToAliasMap))
-                : transformObject(value, idToAliasMap);
-              item[alias] = tempObj;
+              const tempObj = {};
+              Object.entries(value).forEach(([k, v]) => {
+                const btAlias = idToAliasMap[k];
+                if (btAlias) {
+                  tempObj[btAlias] = v;
+                }
+              });
               item[alias] = tempObj;
             } else {
               item[alias] = value;
@@ -7204,7 +7183,7 @@ class BaseModelSqlv2 {
 
           if (
             typeof data[column.column_name] === 'string' &&
-            /^\s*[{[]/.test(data[column.column_name])
+            /^\s*[{[]$/.test(data[column.column_name])
           ) {
             try {
               data[column.column_name] = JSON.parse(data[column.column_name]);

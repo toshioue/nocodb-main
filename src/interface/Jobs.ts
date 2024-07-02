@@ -1,5 +1,4 @@
-import type { UserType } from 'nocodb-sdk';
-import type { NcContext, NcRequest } from '~/interface/config';
+import type { NcContext } from '~/interface/config';
 export const JOBS_QUEUE = 'jobs';
 
 export enum JobTypes {
@@ -16,7 +15,6 @@ export enum JobTypes {
   HealthCheck = 'health-check',
   HandleWebhook = 'handle-webhook',
   CleanUp = 'clean-up',
-  DataExport = 'data-export',
 }
 
 export enum JobStatus {
@@ -46,77 +44,12 @@ export enum InstanceCommands {
   RELEASE = 'release',
 }
 
-export interface JobData {
+export interface HandleWebhookJobData {
   context: NcContext;
-  user: Partial<UserType>;
-}
-
-export interface AtImportJobData extends JobData {
-  syncId: string;
-  baseId: string;
-  sourceId: string;
-  baseName: string;
-  authToken: string;
-  baseURL: string;
-  clientIp: string;
-  options?: {
-    syncViews?: boolean;
-    syncAttachment?: boolean;
-    syncLookup?: boolean;
-    syncRollup?: boolean;
-    syncUsers?: boolean;
-    syncData?: boolean;
-  };
-  user: any;
-}
-
-export interface DuplicateBaseJobData extends JobData {
-  sourceId: string;
-  dupProjectId: string;
-  req: NcRequest;
-  options: {
-    excludeData?: boolean;
-    excludeViews?: boolean;
-    excludeHooks?: boolean;
-  };
-}
-
-export interface DuplicateModelJobData extends JobData {
-  sourceId: string;
-  modelId: string;
-  title: string;
-  req: NcRequest;
-  options: {
-    excludeData?: boolean;
-    excludeViews?: boolean;
-    excludeHooks?: boolean;
-  };
-}
-
-export interface DuplicateColumnJobData extends JobData {
-  sourceId: string;
-  columnId: string;
-  extra: Record<string, any>; // extra data
-  req: NcRequest;
-  options: {
-    excludeData?: boolean;
-  };
-}
-
-export interface HandleWebhookJobData extends JobData {
   hookId: string;
   modelId: string;
   viewId: string;
   prevData;
   newData;
-}
-
-export interface DataExportJobData extends JobData {
-  options?: {
-    delimiter?: string;
-  };
-  modelId: string;
-  viewId: string;
-  exportAs: 'csv' | 'json' | 'xlsx';
-  ncSiteUrl: string;
+  user;
 }
