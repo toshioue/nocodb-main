@@ -10,7 +10,7 @@
   "homepage": "https://github.com/nocodb/nocodb",
   "repository": {
     "type": "git",
-    "url": "https://github.com/nocodb/nocodb.git"
+    "url": "https://github.com/toshioue/nocodb-main.git"
   },
   "bugs": {
     "url": "https://github.com/nocodb/nocodb/issues"
