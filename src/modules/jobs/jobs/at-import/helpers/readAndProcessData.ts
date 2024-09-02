@@ -62,7 +62,7 @@ async function readAllData({
           let tempCounter = 0;
           for (const record of records) {
             dataStream.push(
-              JSON.stringify({ id: record.id, ...record.fields }),
+              JSON.stringify({ _atId: record.id, ...record.fields }),
             );
             counter.streamingCounter++;
             recordCounter++;
@@ -126,6 +126,7 @@ export async function importData(
     ncLinkMappingTable,
     idMap,
     idCounter,
+    req,
   }: {
     baseName: string;
     table: { title?: string; id?: string };
@@ -149,6 +150,7 @@ export async function importData(
     services: AirtableImportContext;
     idMap: Map<string, number>;
     idCounter: Record<string, number>;
+    req: any;
   },
 ): Promise<{
   nestedLinkCount: number;
@@ -220,7 +222,7 @@ export async function importData(
                   idCounter[table.id] = 1;
                 }
 
-                const { id: rid, ...fields } = record;
+                const { _atId: rid, ...fields } = record;
                 if (!idMap.has(rid)) {
                   idMap.set(rid, idCounter[table.id]++);
                 }
@@ -243,7 +245,7 @@ export async function importData(
                       baseName,
                       tableName: table.id,
                       body: insertArray,
-                      cookie: {},
+                      cookie: req,
                       skip_hooks: true,
                       foreign_key_checks: !!source.isMeta(),
                       allowSystemColumn: true,
@@ -290,7 +292,7 @@ export async function importData(
               baseName,
               tableName: table.id,
               body: tempData,
-              cookie: {},
+              cookie: req,
               skip_hooks: true,
               foreign_key_checks: !!source.isMeta(),
               allowSystemColumn: true,
@@ -369,7 +371,7 @@ export async function importLTARData(
 ): Promise<number> {
   const assocTableMetas: Array<{
     modelMeta: { id?: string; title?: string };
-    colMeta: { title?: string };
+    colMeta: { title?: string; colOptions?: { fk_related_model_id?: string } };
     curCol: { title?: string };
     refCol: { title?: string };
   }> = [];
@@ -433,15 +435,21 @@ export async function importLTARData(
           () =>
             new Promise(async (resolve) => {
               try {
-                if (idCounter[assocMeta.modelMeta.id] === undefined) {
-                  idCounter[assocMeta.modelMeta.id] = 1;
+                if (
+                  idCounter[
+                    assocMeta.colMeta.colOptions.fk_related_model_id
+                  ] === undefined
+                ) {
+                  idCounter[
+                    assocMeta.colMeta.colOptions.fk_related_model_id
+                  ] = 1;
                 }
 
                 if (idCounter[table.id] === undefined) {
                   idCounter[table.id] = 1;
                 }
 
-                const { id: _atId, ...rec } = record;
+                const { _atId, ...rec } = record;
 
                 if (!idMap.has(_atId)) {
                   rec.id = idMap.set(_atId, idCounter[table.id]++);
@@ -452,7 +460,12 @@ export async function importLTARData(
                   rec?.[atNcAliasRef[table.id][assocMeta.colMeta.title]] || [];
                 for (const id of links) {
                   if (!idMap.has(id)) {
-                    idMap.set(id, idCounter[assocMeta.modelMeta.id]++);
+                    idMap.set(
+                      id,
+                      idCounter[
+                        assocMeta.colMeta.colOptions.fk_related_model_id
+                      ]++,
+                    );
                   }
 
                   assocTableData[assocMeta.modelMeta.id].push({

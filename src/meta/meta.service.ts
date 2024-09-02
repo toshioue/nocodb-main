@@ -59,7 +59,7 @@ export class MetaService {
     base_id: string,
     target: string,
   ) {
-    if (workspace_id === base_id) {
+    if (workspace_id === base_id || base_id === RootScopes.WORKSPACE) {
       return;
     }
 
@@ -126,14 +126,13 @@ export class MetaService {
         });
       }
     } else {
-      if (!base_id) {
+      if (!base_id && base_id !== RootScopes.WORKSPACE) {
         NcError.metaError({
           message: 'Base ID is required',
           sql: '',
         });
       }
-
-      insertObj.base_id = base_id;
+      if (base_id !== RootScopes.WORKSPACE) insertObj.base_id = base_id;
     }
 
     await this.knexConnection(target).insert({
@@ -186,7 +185,7 @@ export class MetaService {
         });
       }
     } else {
-      if (!base_id) {
+      if (!base_id && base_id !== RootScopes.WORKSPACE) {
         NcError.metaError({
           message: 'Base ID is required',
           sql: '',
@@ -208,6 +207,81 @@ export class MetaService {
     await this.knexConnection.batchInsert(target, insertObj);
 
     return insertObj;
+  }
+
+  /***
+   * Update multiple records in meta data
+   * @param workspace_id - Workspace id
+   * @param base_id - Base id
+   * @param target - Table name
+   * @param data - Data to be updated
+   * @param ids - Ids of the records to be updated
+   */
+  public async bulkMetaUpdate(
+    workspace_id: string,
+    base_id: string,
+    target: string,
+    data: any | any[],
+    ids: string[],
+    condition?: { [p: string]: any },
+  ): Promise<any> {
+    if (Array.isArray(data) ? !data.length : !data) {
+      return [];
+    }
+
+    const query = this.knexConnection(target);
+
+    const at = this.now();
+
+    if (workspace_id === base_id) {
+      if (!Object.values(RootScopes).includes(workspace_id as RootScopes)) {
+        NcError.metaError({
+          message: 'Invalid scope',
+          sql: '',
+        });
+      }
+
+      if (!RootScopeTables[workspace_id].includes(target)) {
+        NcError.metaError({
+          message: 'Table not accessible from this scope',
+          sql: '',
+        });
+      }
+    } else {
+      if (!base_id) {
+        NcError.metaError({
+          message: 'Base ID is required',
+          sql: '',
+        });
+      }
+    }
+
+    const updateObj = {
+      ...data,
+      updated_at: at,
+    };
+
+    if (!condition) {
+      query.whereIn('id', ids).update(updateObj);
+    } else {
+      if (![MetaTable.FILE_REFERENCES].includes(target as MetaTable)) {
+        NcError.metaError({
+          message: 'This table does not support conditional bulk update',
+          sql: '',
+        });
+      }
+
+      query.where(condition);
+
+      // Check if a condition is present in the query builder and throw an error if not.
+      this.checkConditionPresent(query, 'update');
+
+      query.update(updateObj);
+    }
+
+    this.contextCondition(query, workspace_id, base_id, target);
+
+    return query;
   }
 
   /***
@@ -251,6 +325,10 @@ export class MetaService {
       [MetaTable.COMMENTS]: 'com',
       [MetaTable.COMMENTS_REACTIONS]: 'cre',
       [MetaTable.USER_COMMENTS_NOTIFICATIONS_PREFERENCE]: 'cnp',
+      [MetaTable.JOBS]: 'job',
+      [MetaTable.INTEGRATIONS]: 'int',
+      [MetaTable.FILE_REFERENCES]: 'at',
+      [MetaTable.COL_BUTTON]: 'btn',
     };
 
     const prefix = prefixMap[target] || 'nc';
@@ -297,7 +375,7 @@ export class MetaService {
         });
       }
     } else {
-      if (!base_id) {
+      if (!base_id && base_id !== RootScopes.WORKSPACE) {
         NcError.metaError({
           message: 'Base ID is required',
           sql: '',
@@ -370,7 +448,7 @@ export class MetaService {
         });
       }
     } else {
-      if (!base_id) {
+      if (!base_id && base_id !== RootScopes.WORKSPACE) {
         NcError.metaError({
           message: 'Base ID is required',
           sql: '',
@@ -453,7 +531,7 @@ export class MetaService {
         });
       }
     } else {
-      if (!base_id) {
+      if (!base_id && base_id !== RootScopes.WORKSPACE) {
         NcError.metaError({
           message: 'Base ID is required',
           sql: '',
@@ -527,7 +605,7 @@ export class MetaService {
         });
       }
     } else {
-      if (!base_id) {
+      if (!base_id && base_id !== RootScopes.WORKSPACE) {
         NcError.metaError({
           message: 'Base ID is required',
           sql: '',
@@ -588,7 +666,7 @@ export class MetaService {
         });
       }
     } else {
-      if (!base_id) {
+      if (!base_id && base_id !== RootScopes.WORKSPACE) {
         NcError.metaError({
           message: 'Base ID is required',
           sql: '',
@@ -718,6 +796,16 @@ export class MetaService {
 
   public now(): any {
     return dayjs()
+      .utc()
+      .format(
+        this.isMySQL() || this.isMssql()
+          ? 'YYYY-MM-DD HH:mm:ss'
+          : 'YYYY-MM-DD HH:mm:ssZ',
+      );
+  }
+
+  public formatDateTime(date: string): string {
+    return dayjs(date)
       .utc()
       .format(
         this.isMySQL() || this.isMssql()

@@ -8,7 +8,7 @@ import type {
   // XcPlugin,
   // XcStoragePlugin,
   // XcWebhookNotificationPlugin
-} from 'nc-plugin';
+} from '~/types/nc-plugin';
 import BackblazePluginConfig from '~/plugins/backblaze';
 import DiscordPluginConfig from '~/plugins/discord';
 import GcsPluginConfig from '~/plugins/gcs';
@@ -28,6 +28,7 @@ import TwilioWhatsappPluginConfig from '~/plugins/twilioWhatsapp';
 import UpcloudPluginConfig from '~/plugins/upcloud';
 import VultrPluginConfig from '~/plugins/vultr';
 import SESPluginConfig from '~/plugins/ses';
+import R2PluginConfig from '~/plugins/r2';
 import Noco from '~/Noco';
 import Local from '~/plugins/storage/Local';
 import { MetaTable, RootScopes } from '~/utils/globals';
@@ -53,6 +54,7 @@ const defaultPlugins = [
   MailerSendConfig,
   ScalewayPluginConfig,
   SESPluginConfig,
+  R2PluginConfig,
 ];
 
 class NcPluginMgrv2 {
@@ -132,8 +134,11 @@ class NcPluginMgrv2 {
         input: JSON.stringify({
           bucket: process.env.NC_S3_BUCKET_NAME,
           region: process.env.NC_S3_REGION,
+          endpoint: process.env.NC_S3_ENDPOINT,
           access_key: process.env.NC_S3_ACCESS_KEY,
           access_secret: process.env.NC_S3_ACCESS_SECRET,
+          force_path_style: process.env.NC_S3_FORCE_PATH_STYLE === 'true',
+          acl: process.env.NC_S3_ACL,
         }),
       });
     }

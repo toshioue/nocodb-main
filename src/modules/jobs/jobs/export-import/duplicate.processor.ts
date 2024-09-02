@@ -1,10 +1,15 @@
 import { Readable } from 'stream';
-import { Process, Processor } from '@nestjs/bull';
-import { Job } from 'bull';
 import papaparse from 'papaparse';
 import debug from 'debug';
 import { isLinksOrLTAR, isVirtualCol, RelationTypes } from 'nocodb-sdk';
+import { Injectable } from '@nestjs/common';
+import type { Job } from 'bull';
 import type { NcContext } from '~/interface/config';
+import type {
+  DuplicateBaseJobData,
+  DuplicateColumnJobData,
+  DuplicateModelJobData,
+} from '~/interface/Jobs';
 import { Base, Column, Model, Source } from '~/models';
 import { BasesService } from '~/services/bases.service';
 import {
@@ -13,12 +18,12 @@ import {
 } from '~/helpers/exportImportHelpers';
 import { BulkDataAliasService } from '~/services/bulk-data-alias.service';
 import { ColumnsService } from '~/services/columns.service';
-import { JOBS_QUEUE, JobTypes } from '~/interface/Jobs';
+import { JobTypes } from '~/interface/Jobs';
 import { elapsedTime, initTime } from '~/modules/jobs/helpers';
 import { ExportService } from '~/modules/jobs/jobs/export-import/export.service';
 import { ImportService } from '~/modules/jobs/jobs/export-import/import.service';
 
-@Processor(JOBS_QUEUE)
+@Injectable()
 export class DuplicateProcessor {
   private readonly debugLog = debug('nc:jobs:duplicate');
 
@@ -30,8 +35,7 @@ export class DuplicateProcessor {
     private readonly columnsService: ColumnsService,
   ) {}
 
-  @Process(JobTypes.DuplicateBase)
-  async duplicateBase(job: Job) {
+  async duplicateBase(job: Job<DuplicateBaseJobData>) {
     this.debugLog(`job started for ${job.id} (${JobTypes.DuplicateBase})`);
 
     const hrTime = initTime();
@@ -39,6 +43,11 @@ export class DuplicateProcessor {
     const { context, sourceId, dupProjectId, req, options } = job.data;
 
     const baseId = context.base_id;
+
+    // workspace templates placeholder user
+    if (req.user?.id === '1') {
+      delete req.user;
+    }
 
     const excludeData = options?.excludeData || false;
     const excludeHooks = options?.excludeHooks || false;
@@ -108,6 +117,7 @@ export class DuplicateProcessor {
           destProject: dupProject,
           destBase: dupBase,
           hrTime,
+          req,
         });
       }
 
@@ -131,10 +141,11 @@ export class DuplicateProcessor {
     }
 
     this.debugLog(`job completed for ${job.id} (${JobTypes.DuplicateBase})`);
+
+    return { id: dupProject.id };
   }
 
-  @Process(JobTypes.DuplicateModel)
-  async duplicateModel(job: Job) {
+  async duplicateModel(job: Job<DuplicateModelJobData>) {
     this.debugLog(`job started for ${job.id} (${JobTypes.DuplicateModel})`);
 
     const hrTime = initTime();
@@ -234,6 +245,7 @@ export class DuplicateProcessor {
         hrTime,
         modelFieldIds: fields,
         externalModels: relatedModels,
+        req,
       });
 
       elapsedTime(hrTime, 'import model data', 'duplicateModel');
@@ -241,11 +253,10 @@ export class DuplicateProcessor {
 
     this.debugLog(`job completed for ${job.id} (${JobTypes.DuplicateModel})`);
 
-    return await Model.get(context, findWithIdentifier(idMap, sourceModel.id));
+    return { id: findWithIdentifier(idMap, sourceModel.id) };
   }
 
-  @Process(JobTypes.DuplicateColumn)
-  async duplicateColumn(job: Job) {
+  async duplicateColumn(job: Job<DuplicateColumnJobData>) {
     this.debugLog(`job started for ${job.id} (${JobTypes.DuplicateColumn})`);
 
     const hrTime = initTime();
@@ -374,6 +385,7 @@ export class DuplicateProcessor {
           sourceModel,
           ...relatedModels.filter((m) => m.id !== sourceModel.id),
         ],
+        req,
       });
 
       elapsedTime(hrTime, 'import model data', 'duplicateColumn');
@@ -398,10 +410,7 @@ export class DuplicateProcessor {
 
     this.debugLog(`job completed for ${job.id} (${JobTypes.DuplicateModel})`);
 
-    return await Column.get(context, {
-      source_id: base.id,
-      colId: findWithIdentifier(idMap, sourceColumn.id),
-    });
+    return { id: findWithIdentifier(idMap, sourceColumn.id) };
   }
 
   async importModelsData(
@@ -416,6 +425,7 @@ export class DuplicateProcessor {
       hrTime: { hrTime: [number, number] };
       modelFieldIds?: Record<string, string[]>;
       externalModels?: Model[];
+      req: any;
     },
   ) {
     const {
@@ -427,6 +437,7 @@ export class DuplicateProcessor {
       hrTime,
       modelFieldIds,
       externalModels,
+      req,
     } = param;
 
     let handledLinks = [];
@@ -470,6 +481,7 @@ export class DuplicateProcessor {
         destProject,
         destBase,
         destModel: model,
+        req,
       });
 
       handledLinks = await this.importService.importLinkFromCsvStream(
@@ -595,7 +607,7 @@ export class DuplicateProcessor {
                             baseName: destProject.id,
                             tableName: model.id,
                             body: chunk,
-                            cookie: null,
+                            cookie: req,
                             raw: true,
                           },
                         );
@@ -619,7 +631,7 @@ export class DuplicateProcessor {
                       baseName: destProject.id,
                       tableName: model.id,
                       body: chunk,
-                      cookie: null,
+                      cookie: req,
                       raw: true,
                     });
                   }

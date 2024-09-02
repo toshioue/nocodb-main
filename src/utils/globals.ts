@@ -51,6 +51,10 @@ export enum MetaTable {
   COMMENTS = 'nc_comments',
   USER_COMMENTS_NOTIFICATIONS_PREFERENCE = 'nc_user_comment_notifications_preference',
   COMMENTS_REACTIONS = 'nc_comment_reactions',
+  JOBS = 'nc_jobs',
+  INTEGRATIONS = 'nc_integrations_v2',
+  FILE_REFERENCES = 'nc_file_references',
+  COL_BUTTON = 'nc_col_button_v2',
 }
 
 export enum MetaTableOldV2 {
@@ -171,6 +175,7 @@ export enum CacheScope {
   DASHBOARD_PROJECT_DB_PROJECT_LINKING = 'dashboardProjectDBProjectLinking',
   SINGLE_QUERY = 'singleQuery',
   JOBS = 'nc_jobs',
+  JOBS_POLLING = 'nc_jobs_polling',
   PRESIGNED_URL = 'presignedUrl',
   STORE = 'store',
   PROJECT_ALIAS = 'baseAlias',
@@ -178,6 +183,8 @@ export enum CacheScope {
   VIEW_ALIAS = 'viewAlias',
   SSO_CLIENT = 'ssoClient',
   EXTENSION = 'uiExtension',
+  INTEGRATION = 'integration',
+  COL_BUTTON = 'colButton',
 }
 
 export enum CacheGetType {
@@ -281,8 +288,12 @@ export const RootScopeTables = {
     MetaTable.PLUGIN,
     MetaTable.STORE,
     MetaTable.NOTIFICATION,
+    MetaTable.JOBS,
+    MetaTable.FILE_REFERENCES,
     // Temporarily added need to be discussed within team
     MetaTable.AUDIT,
   ],
   [RootScopes.BASE]: [MetaTable.PROJECT],
+  // It's a special case and Workspace is equivalent to org in oss
+  [RootScopes.WORKSPACE]: [MetaTable.INTEGRATIONS],
 };

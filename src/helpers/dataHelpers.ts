@@ -165,12 +165,19 @@ export async function serializeCellValue(
         if (typeof value === 'string') {
           data = JSON.parse(value);
         }
-      } catch {}
+
+        if (!Array.isArray(data)) {
+          data = [data];
+        }
+      } catch {
+        data = undefined;
+      }
 
       return (data || [])
+        .filter((attachment) => attachment)
         .map(
           (attachment) =>
-            `${encodeURI(attachment.title)}(${encodeURI(
+            `${attachment.title || 'Attachment'}(${encodeURI(
               attachment.signedPath
                 ? `${siteUrl}/${attachment.signedPath}`
                 : attachment.signedUrl,
@@ -220,6 +227,13 @@ export async function serializeCellValue(
             return v[relatedModel.displayValue?.title];
           })
           .join(', ');
+      }
+      break;
+    case UITypes.Decimal:
+      {
+        if (isNaN(Number(value))) return null;
+
+        return Number(value).toFixed(column.meta?.precision ?? 1);
       }
       break;
     default:

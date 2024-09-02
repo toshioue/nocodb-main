@@ -13,7 +13,7 @@ import NcConnectionMgrv2 from '~/utils/common/NcConnectionMgrv2';
 
 @Injectable()
 export class DataTableService {
-  constructor(private datasService: DatasService) {}
+  constructor(protected datasService: DatasService) {}
 
   async dataList(
     context: NcContext,
@@ -233,7 +233,7 @@ export class DataTableService {
     return { count };
   }
 
-  private async getModelAndView(
+  protected async getModelAndView(
     context: NcContext,
     param: {
       baseId?: string;
@@ -754,5 +754,109 @@ export class DataTableService {
           return acc;
         }, {} as Record<string, any>),
       );
+  }
+
+  async bulkDataList(
+    context: NcContext,
+    param: {
+      baseId?: string;
+      modelId: string;
+      viewId?: string;
+      query: any;
+      body: any;
+    },
+  ) {
+    const { model, view } = await this.getModelAndView(context, param);
+
+    let bulkFilterList = param.body;
+
+    try {
+      bulkFilterList = JSON.parse(bulkFilterList);
+    } catch (e) {}
+
+    if (!bulkFilterList?.length) {
+      NcError.badRequest('Invalid bulkFilterList');
+    }
+
+    const dataListResults = await bulkFilterList.reduce(
+      async (accPromise, dF: any) => {
+        const acc = await accPromise;
+        const result = await this.datasService.dataList(context, {
+          query: {
+            ...dF,
+          },
+          model,
+          view,
+        });
+        acc[dF.alias] = result;
+        return acc;
+      },
+      Promise.resolve({}),
+    );
+
+    return dataListResults;
+  }
+
+  async bulkGroupBy(
+    context: NcContext,
+    param: {
+      baseId?: string;
+      modelId: string;
+      viewId?: string;
+      query: any;
+      body: any;
+    },
+  ) {
+    const { model, view } = await this.getModelAndView(context, param);
+
+    const source = await Source.get(context, model.source_id);
+
+    const baseModel = await Model.getBaseModelSQL(context, {
+      id: model.id,
+      viewId: view?.id,
+      dbDriver: await NcConnectionMgrv2.get(source),
+    });
+
+    let bulkFilterList = param.body;
+
+    const listArgs: any = { ...param.query };
+    try {
+      bulkFilterList = JSON.parse(bulkFilterList);
+    } catch (e) {}
+
+    try {
+      listArgs.filterArr = JSON.parse(listArgs.filterArrJSON);
+    } catch (e) {}
+
+    if (!bulkFilterList?.length) {
+      NcError.badRequest('Invalid bulkFilterList');
+    }
+
+    const [data, count] = await Promise.all([
+      baseModel.bulkGroupBy(listArgs, bulkFilterList, view),
+      baseModel.bulkGroupByCount(listArgs, bulkFilterList, view),
+    ]);
+
+    bulkFilterList.forEach((dF: any) => {
+      // sqlite3 returns data as string. Hence needs to be converted to json object
+      let parsedData = data[dF.alias];
+
+      if (typeof parsedData === 'string') {
+        parsedData = JSON.parse(parsedData);
+      }
+
+      let parsedCount = count[dF.alias];
+
+      if (typeof parsedCount === 'string') {
+        parsedCount = JSON.parse(parsedCount);
+      }
+
+      data[dF.alias] = new PagedResponseImpl(parsedData, {
+        ...dF,
+        count: parsedCount?.count,
+      });
+    });
+
+    return data;
   }
 }

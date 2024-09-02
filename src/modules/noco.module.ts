@@ -1,8 +1,8 @@
-import multer from 'multer';
 import { Module } from '@nestjs/common';
-import { MulterModule } from '@nestjs/platform-express';
 
 /* Modules */
+import { MulterModule } from '@nestjs/platform-express';
+import multer from 'multer';
 import { EventEmitterModule } from '~/modules/event-emitter/event-emitter.module';
 import { JobsModule } from '~/modules/jobs/jobs.module';
 
@@ -100,6 +100,8 @@ import { CommandPaletteService } from '~/services/command-palette.service';
 import { CommandPaletteController } from '~/controllers/command-palette.controller';
 import { ExtensionsService } from '~/services/extensions.service';
 import { ExtensionsController } from '~/controllers/extensions.controller';
+import { JobsMetaService } from '~/services/jobs-meta.service';
+import { JobsMetaController } from '~/controllers/jobs-meta.controller';
 
 /* Datas */
 import { DataTableController } from '~/controllers/data-table.controller';
@@ -120,6 +122,8 @@ import { PublicDatasExportService } from '~/services/public-datas-export.service
 import { PublicDatasService } from '~/services/public-datas.service';
 import { CalendarDatasController } from '~/controllers/calendars-datas.controller';
 import { CalendarDatasService } from '~/services/calendar-datas.service';
+import { IntegrationsController } from '~/controllers/integrations.controller';
+import { IntegrationsService } from '~/services/integrations.service';
 
 export const nocoModuleMetadata = {
   imports: [
@@ -178,6 +182,8 @@ export const nocoModuleMetadata = {
           NotificationsController,
           CommandPaletteController,
           ExtensionsController,
+          JobsMetaController,
+          IntegrationsController,
 
           /* Datas */
           DataTableController,
@@ -246,6 +252,8 @@ export const nocoModuleMetadata = {
     NotificationsService,
     CommandPaletteService,
     ExtensionsService,
+    JobsMetaService,
+    IntegrationsService,
 
     /* Datas */
     DataTableService,

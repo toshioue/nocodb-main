@@ -21,10 +21,9 @@ import type {
   UserSigninEvent,
   UserSignupEvent,
 } from '~/services/app-hooks/interfaces';
-import { Audit } from '~/models';
+import { Audit, User } from '~/models';
 import { TelemetryService } from '~/services/telemetry.service';
 import { AppHooksService } from '~/services/app-hooks/app-hooks.service';
-import { User } from '~/models';
 
 @Injectable()
 export class AppHooksListenerService implements OnModuleInit, OnModuleDestroy {
@@ -261,6 +260,22 @@ export class AppHooksListenerService implements OnModuleInit, OnModuleDestroy {
             user: param.invitedBy.email,
             description: `${param.user.email} has been re-invited`,
             ip: param.ip,
+          });
+        }
+        break;
+      case AppEvents.ATTACHMENT_UPLOAD:
+        {
+          this.telemetryService.sendEvent({
+            evt_type: 'image:uploaded',
+            type: data?.type,
+          });
+        }
+        break;
+      case AppEvents.WEBHOOK_TRIGGER:
+        {
+          this.telemetryService.sendEvent({
+            evt_type: 'webhook:trigger',
+            type: data?.type,
           });
         }
         break;

@@ -30,7 +30,7 @@ export class SourceCreateController {
     '/api/v2/meta/bases/:baseId/sources',
   ])
   @HttpCode(200)
-  @Acl('baseCreate')
+  @Acl('sourceCreate')
   async baseCreate(
     @TenantContext() context: NcContext,
     @Param('baseId') baseId: string,
@@ -50,6 +50,7 @@ export class SourceCreateController {
 
     const job = await this.jobsService.add(JobTypes.SourceCreate, {
       context,
+      user: req.user,
       baseId,
       source: body,
       req: {

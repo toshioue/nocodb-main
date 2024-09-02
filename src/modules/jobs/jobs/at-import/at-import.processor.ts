@@ -5,16 +5,16 @@ import hash from 'object-hash';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import tinycolor from 'tinycolor2';
-import { Process, Processor } from '@nestjs/bull';
-import { Job } from 'bull';
 import { isLinksOrLTAR } from 'nocodb-sdk';
 import debug from 'debug';
-import { Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { JobsLogService } from '../jobs-log.service';
 import FetchAT from './helpers/fetchAT';
 import { importData } from './helpers/readAndProcessData';
 import EntityMap from './helpers/EntityMap';
+import type { Job } from 'bull';
 import type { UserType } from 'nocodb-sdk';
+import type { AtImportJobData } from '~/interface/Jobs';
 import { type Base, Model, Source } from '~/models';
 import { sanitizeColumnName } from '~/helpers';
 import { AttachmentsService } from '~/services/attachments.service';
@@ -31,7 +31,6 @@ import { TablesService } from '~/services/tables.service';
 import { ViewColumnsService } from '~/services/view-columns.service';
 import { ViewsService } from '~/services/views.service';
 import { FormsService } from '~/services/forms.service';
-import { JOBS_QUEUE, JobTypes } from '~/interface/Jobs';
 import { GridColumnsService } from '~/services/grid-columns.service';
 import { TelemetryService } from '~/services/telemetry.service';
 import NcConnectionMgrv2 from '~/utils/common/NcConnectionMgrv2';
@@ -87,7 +86,7 @@ const selectColors = {
   grayDarker: '#444',
 };
 
-@Processor(JOBS_QUEUE)
+@Injectable()
 export class AtImportProcessor {
   private readonly debugLog = debug('nc:jobs:at-import');
 
@@ -111,8 +110,7 @@ export class AtImportProcessor {
     private readonly telemetryService: TelemetryService,
   ) {}
 
-  @Process(JobTypes.AtImport)
-  async job(job: Job) {
+  async job(job: Job<AtImportJobData>) {
     this.debugLog(`job started for ${job.id}`);
 
     const context = job.data.context;
@@ -120,7 +118,10 @@ export class AtImportProcessor {
     const syncDB = job.data;
 
     const req = {
-      user: syncDB.user.email,
+      user: {
+        id: syncDB.user.id,
+        email: syncDB.user.email,
+      },
       clientIp: syncDB.clientIp,
     } as any;
 
@@ -2561,6 +2562,7 @@ export class AtImportProcessor {
               logBasic,
               logDetailed,
               logWarning,
+              req,
             });
 
             if (source.type === 'pg') {
@@ -2668,7 +2670,7 @@ export interface AirtableSyncConfig {
   apiKey: string;
   appId?: string;
   shareId: string;
-  user: UserType;
+  user: Partial<UserType>;
   options: {
     syncViews: boolean;
     syncData: boolean;

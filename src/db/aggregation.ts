@@ -8,7 +8,12 @@ import {
   UITypes,
 } from 'nocodb-sdk';
 import type { BaseModelSqlv2 } from '~/db/BaseModelSqlv2';
-import type { BarcodeColumn, QrCodeColumn, RollupColumn } from '~/models';
+import type {
+  BarcodeColumn,
+  FormulaColumn,
+  QrCodeColumn,
+  RollupColumn,
+} from '~/models';
 import { Column } from '~/models';
 import { NcError } from '~/helpers/catchError';
 import genRollupSelectv2 from '~/db/genRollupSelectv2';
@@ -74,10 +79,12 @@ export default async function applyAggregation({
   baseModelSqlv2,
   aggregation,
   column,
+  alias,
 }: {
   baseModelSqlv2: BaseModelSqlv2;
   aggregation: string;
   column: Column;
+  alias?: string;
 }): Promise<string | undefined> {
   if (!aggregation || !column) {
     return;
@@ -149,9 +156,14 @@ export default async function applyAggregation({
       break;
 
     case UITypes.Formula:
-      column_name_query = (
-        await baseModelSqlv2.getSelectQueryBuilderForFormula(column)
-      ).builder;
+      const formula = await column.getColOptions<FormulaColumn>(context);
+      if (formula.error) {
+        aggregation = CommonAggregations.None;
+      } else {
+        column_name_query = (
+          await baseModelSqlv2.getSelectQueryBuilderForFormula(column)
+        ).builder;
+      }
       break;
 
     case UITypes.LinkToAnotherRecord:
@@ -176,6 +188,7 @@ export default async function applyAggregation({
       column_query: column_name_query,
       parsedFormulaType,
       aggType,
+      alias: alias,
     });
   } else if (knex.client.config.client === 'mysql2') {
     return genMysql2AggregatedQuery({
@@ -185,6 +198,7 @@ export default async function applyAggregation({
       column_query: column_name_query,
       parsedFormulaType,
       aggType,
+      alias: alias,
     });
   } else if (knex.client.config.client === 'sqlite3') {
     return genSqlite3AggregateQuery({
@@ -194,6 +208,7 @@ export default async function applyAggregation({
       column_query: column_name_query,
       parsedFormulaType,
       aggType,
+      alias: alias,
     });
   } else {
     NcError.notImplemented(
